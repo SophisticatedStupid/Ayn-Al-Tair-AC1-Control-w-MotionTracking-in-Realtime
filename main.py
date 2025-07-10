@@ -60,10 +60,31 @@ while cap.isOpened():
         left_shoulder = lm[mp_pose.PoseLandmark.LEFT_SHOULDER]
         right_shoulder = lm[mp_pose.PoseLandmark.RIGHT_SHOULDER]
         hip = lm[mp_pose.PoseLandmark.LEFT_HIP]  # or use average of both hips
+        
+
+        # Assassination Stab from Right to Front
+        if 'stab_start' not in cooldowns and right_hand.x < hip.x - 0.1:
+            cooldowns['stab_start'] = right_hand, current_time
+        
+        if 'stab_start' in cooldowns:
+            stab_start_hand, stab_start_time = cooldowns['stab_start']
+            if current_time - stab_start_time < 1:
+                # Hand moved forward AND upward
+                if right_hand.x > hip.x + 0.05 and right_hand.y < stab_start_hand.y - 0.1:
+                    print("🗡️ Assassinate → Left Click")
+                    pyautogui.click()
+                    cooldowns['stab_start'] = None
+            else:
+                cooldowns['stab_start'] = None
 
         # Distance thresholds (you might need to tweak these)
         hand_distance = calculate_distance(left_hand, right_hand)
         shoulder_width = calculate_distance(left_shoulder, right_shoulder)
+        # Parkour Mode Trigger
+        if nose.y < hip.y - 0.15 and cooldowns['jump'] <= 0:
+            print("🏃 Parkour Activated → W + Shift + Space")
+            press_keys(['w', 'shift', 'space'])
+            cooldowns['jump'] = 1.5
 
         # JUMP: arms stretched out + head moves up
         if hand_distance > shoulder_width * 1.8 and cooldowns['jump'] <= 0:
@@ -88,6 +109,17 @@ while cap.isOpened():
             print("➡️ RIGHT → D")
             press_keys(['d'])
             cooldowns['right'] = 1
+        # Use a timestamp history for both hands to detect double clap
+        if wrist_distance < 0.05:
+            if 'last_clap_time' not in cooldowns:
+                cooldowns['last_clap_time'] = current_time
+            elif current_time - cooldowns['last_clap_time'] < 1:
+                print("⚔️ Combat Mode Triggered → Press F")
+                pyautogui.press('f')
+                cooldowns['combat'] = 2
+                cooldowns['last_clap_time'] = 0  # reset
+        else:
+            cooldowns['last_clap_time'] = 0
 
         # MOVE BACK: head moves back/down (like leaning)
         if nose.y > hip.y + 0.05 and cooldowns['back'] <= 0:
